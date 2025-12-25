@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -19,12 +19,7 @@ const Home = () => {
   const { addToCart, cart } = useCart();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchItems();
-    fetchCategories();
-  }, [selectedCategory, searchTerm]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -38,16 +33,21 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, searchTerm]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/categories`);
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchItems();
+    fetchCategories();
+  }, [fetchItems, fetchCategories]);
 
   const handleAddToCart = (item) => {
     if (!isAuthenticated) {

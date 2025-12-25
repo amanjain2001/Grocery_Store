@@ -7,7 +7,6 @@ const Login = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);

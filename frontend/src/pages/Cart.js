@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -18,20 +18,7 @@ const Cart = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    if (cart.length > 0) {
-      fetchItemDetails();
-    } else {
-      setItems([]);
-    }
-  }, [cart, isAuthenticated, navigate]);
-
-  const fetchItemDetails = async () => {
+  const fetchItemDetails = useCallback(async () => {
     if (cart.length === 0) {
       setItems([]);
       return;
@@ -49,7 +36,20 @@ const Cart = () => {
       console.error('Error fetching item details:', error);
       setItems([]);
     }
-  };
+  }, [cart]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    if (cart.length > 0) {
+      fetchItemDetails();
+    } else {
+      setItems([]);
+    }
+  }, [cart, isAuthenticated, navigate, fetchItemDetails]);
 
   const handleUpdateQuantity = (itemId, newQuantity, oldQuantity) => {
     if (newQuantity <= 0) {
