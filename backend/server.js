@@ -294,13 +294,15 @@ app.post('/api/auth/send-otp', [
           }
 
           // In production, send OTP via SMS service (Twilio, etc.)
-          // For development/testing, return OTP in response
+          // For now, return OTP in response for testing until SMS is integrated
+          // TODO: Integrate SMS service and remove OTP from response
           if (process.env.NODE_ENV === 'production') {
             // TODO: Integrate SMS service here (Twilio, MSG91, etc.)
-            // For now, log it (remove in production after SMS integration)
             console.log(`OTP for ${phone_number} (normalized: ${normalizedPhone}): ${otp}`);
+            // For now, return OTP in response (remove after SMS integration)
             res.json({ 
-              message: 'OTP sent successfully to your phone',
+              message: 'OTP sent successfully. Check the response for OTP (SMS integration pending)',
+              otp: otp, // Remove this after SMS integration
               expires_in: 600
             });
           } else {
