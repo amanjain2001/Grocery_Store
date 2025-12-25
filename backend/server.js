@@ -4,6 +4,8 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -35,17 +37,31 @@ app.use(express.json());
 // Use ./grocery.db (relative to working directory) which should work on Render
 const dbPath = process.env.DATABASE_PATH || './grocery.db';
 let dbReady = false;
+let db;
 
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+// Ensure database directory exists
+const dbDir = path.dirname(path.resolve(dbPath));
+if (!fs.existsSync(dbDir)) {
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log('Created database directory:', dbDir);
+  } catch (err) {
+    console.error('Error creating database directory:', err.message);
+  }
+}
+
+db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
     console.error('Database path:', dbPath);
+    console.error('Absolute path:', path.resolve(dbPath));
     console.error('Current working directory:', process.cwd());
     console.error('NODE_ENV:', process.env.NODE_ENV);
     // Don't exit - let the app start and log errors for debugging
     console.error('Database connection failed. Some endpoints may not work.');
   } else {
     console.log('Connected to SQLite database at:', dbPath);
+    console.log('Absolute path:', path.resolve(dbPath));
     console.log('Working directory:', process.cwd());
     initializeDatabase(() => {
       dbReady = true;
@@ -516,6 +532,12 @@ app.post('/api/auth/login-send-otp', [
   body('phone_number').notEmpty().withMessage('Phone number is required')
 ], (req, res) => {
   try {
+    // Check if database is ready
+    if (!db || !dbReady) {
+      console.error('Database not ready when login-send-otp called');
+      return res.status(503).json({ error: 'Database not ready. Please try again in a moment.' });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
