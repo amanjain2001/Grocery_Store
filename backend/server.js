@@ -490,21 +490,27 @@ app.post('/api/auth/register', [
 app.post('/api/auth/login-send-otp', [
   body('phone_number').notEmpty().withMessage('Phone number is required')
 ], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { phone_number } = req.body;
-  const normalizedPhone = normalizePhoneNumber(phone_number);
-  cleanExpiredOTPs();
-
-  // Check if phone number exists in users table
-  // Get all users and compare normalized phone numbers
-  db.all('SELECT id, phone_number FROM users', (err, allUsers) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+
+    const { phone_number } = req.body;
+    if (!phone_number) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(phone_number);
+    cleanExpiredOTPs();
+
+    // Check if phone number exists in users table
+    // Get all users and compare normalized phone numbers
+    db.all('SELECT id, phone_number FROM users', (err, allUsers) => {
+      if (err) {
+        console.error('Database error in login-send-otp (users query):', err);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
+      }
     
     // Find user by comparing normalized phone numbers
     const user = allUsers.find(u => {
@@ -527,7 +533,8 @@ app.post('/api/auth/login-send-otp', [
       // First get all OTPs and find matching ones by normalized comparison
       db.all('SELECT phone_number FROM otp_verifications', (err, otps) => {
         if (err) {
-          return res.status(500).json({ error: 'Database error' });
+          console.error('Database error in login-send-otp (otp_verifications query):', err);
+          return res.status(500).json({ error: 'Database error: ' + err.message });
         }
         
         // Delete OTPs that match when normalized
@@ -576,10 +583,17 @@ app.post('/api/auth/login-send-otp', [
               });
             }
           });
+        }).catch((error) => {
+          console.error('Error in Promise.all for OTP deletion:', error);
+          return res.status(500).json({ error: 'Error processing OTP: ' + error.message });
         });
       });
     }
   );
+  } catch (error) {
+    console.error('Unexpected error in login-send-otp:', error);
+    return res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
 });
 
 app.post('/api/auth/login', [
