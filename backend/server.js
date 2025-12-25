@@ -31,17 +31,37 @@ app.use(cors({
 app.use(express.json());
 
 // Initialize database
-const db = new sqlite3.Database('./grocery.db', (err) => {
+// On Render, the working directory should be writable
+// Use ./grocery.db (relative to working directory) which should work on Render
+const dbPath = process.env.DATABASE_PATH || './grocery.db';
+let dbReady = false;
+
+const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
+    console.error('Database path:', dbPath);
+    console.error('Current working directory:', process.cwd());
+    console.error('NODE_ENV:', process.env.NODE_ENV);
+    // Don't exit - let the app start and log errors for debugging
+    console.error('Database connection failed. Some endpoints may not work.');
   } else {
-    console.log('Connected to SQLite database');
-    initializeDatabase();
+    console.log('Connected to SQLite database at:', dbPath);
+    console.log('Working directory:', process.cwd());
+    initializeDatabase(() => {
+      dbReady = true;
+      console.log('Database initialized and ready');
+    });
   }
 });
 
+// Handle database errors
+db.on('error', (err) => {
+  console.error('Database error:', err);
+  dbReady = false;
+});
+
 // Initialize database tables
-function initializeDatabase() {
+function initializeDatabase(callback) {
   db.serialize(() => {
     // Users table
     // Note: Username is NOT unique - multiple users can have same username
@@ -191,7 +211,12 @@ function initializeDatabase() {
     // Create default user account
     const defaultUserPassword = bcrypt.hashSync('user123', 10);
     db.run(`INSERT OR IGNORE INTO users (username, email, password, phone_number, role) 
-            VALUES ('user', 'user@store.com', ?, '+91-9876543211', 'user')`, [defaultUserPassword]);
+            VALUES ('user', 'user@store.com', ?, '+91-9876543211', 'user')`, [defaultUserPassword], (err) => {
+      if (err) {
+        console.error('Error creating default user:', err);
+      }
+      if (callback) callback();
+    });
   });
 }
 
