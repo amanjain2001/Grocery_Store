@@ -552,11 +552,16 @@ app.post('/api/auth/login-send-otp', [
               return res.status(500).json({ error: 'Error generating OTP: ' + err.message });
             }
 
-            // In production, send OTP via SMS
+            // In production, send OTP via SMS (when SMS service is integrated)
+            // For now, return OTP in response for testing
+            // TODO: Integrate SMS service (Twilio, MSG91, etc.) and remove OTP from response
             if (process.env.NODE_ENV === 'production') {
               console.log(`Login OTP for ${phone_number} (normalized: ${normalizedPhone}): ${otp}`);
+              // TODO: Send OTP via SMS service here
+              // For now, return OTP in response (remove after SMS integration)
               res.json({ 
-                message: 'OTP sent successfully to your phone',
+                message: 'OTP sent successfully. Check the response for OTP (SMS integration pending)',
+                otp: otp, // Remove this after SMS integration
                 expires_in: 600
               });
             } else {
